@@ -15,7 +15,6 @@ CORS(app, origins=SITE_URL)
 client = genai.Client()
 
 # --- Initialize Gemini Model ---
-# The model name has been changed to gemini-2.5-flash
 model_name = "gemini-2.5-flash"
 
 @app.route('/chat', methods=['POST'])
@@ -30,6 +29,9 @@ def chat():
         return jsonify({"error": "No message provided"}), 400
 
     try:
+        # --- Add a system instruction to the prompt ---
+        system_instruction = "You are LLW AI, a helpful and friendly chatbot. "
+
         context_string = f"User's name: {user_name}. " if user_name else ""
         context_string += f"User's timezone: {user_timezone}. " if user_timezone else ""
         if user_location and user_location['latitude'] and user_location['longitude']:
@@ -37,7 +39,7 @@ def chat():
             lon = user_location['longitude']
             context_string += f"User's location: Latitude {lat}, Longitude {lon}. "
 
-        prompt = f"User's request: '{user_message}'. {context_string}Please respond in a friendly and helpful way."
+        prompt = f"{system_instruction}{context_string}User's request: '{user_message}'. Please respond in a friendly and helpful way."
         
         response = client.models.generate_content(
             model=model_name,
