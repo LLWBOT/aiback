@@ -3,7 +3,7 @@ from flask_cors import CORS
 import os
 import random
 from datetime import datetime
-from google.genai import GenerativeModel # The GenerativeModel is imported directly now
+from google import genai
 
 app = Flask(__name__)
 
@@ -12,22 +12,20 @@ app = Flask(__name__)
 SITE_URL = "https://llwai.netlify.app"
 CORS(app, origins=SITE_URL)
 
-# --- API Key Configuration ---
-# We directly get the API key from the environment variable.
-API_KEY = os.getenv("GEMINI_API_KEY")
-if not API_KEY:
-    raise ValueError("GEMINI_API_KEY environment variable is not set. Please configure it.")
+# --- Initialize Gemini Client ---
+# The Client will automatically get the API key from the environment variable
+# named GEMINI_API_KEY. You don't need to configure it manually anymore.
+client = genai.Client()
 
 # --- Initialize Gemini Model ---
+# The model is now accessed through the client.
+model_name = "gemini-2.5-flash"
 generation_config = {
   "temperature": 0.9,
   "top_p": 1,
   "top_k": 1,
   "max_output_tokens": 2048,
 }
-
-# The API key is passed directly here
-model = GenerativeModel("gemini-pro", generation_config=generation_config, api_key=API_KEY)
 
 
 @app.route('/chat', methods=['POST'])
@@ -41,9 +39,7 @@ def chat():
     if not user_message:
         return jsonify({"error": "No message provided"}), 400
 
-    # --- Catch-all: Send all requests to the Gemini API with context ---
     try:
-        # Build the prompt with all available user context
         context_string = f"User's name: {user_name}. " if user_name else ""
         context_string += f"User's timezone: {user_timezone}. " if user_timezone else ""
         if user_location and user_location['latitude'] and user_location['longitude']:
@@ -53,7 +49,11 @@ def chat():
 
         prompt = f"User's request: '{user_message}'. {context_string}Please respond in a friendly and helpful way."
         
-        response = model.generate_content(prompt)
+        response = client.models.generate_content(
+            model=model_name,
+            contents=prompt,
+            generation_config=generation_config
+        )
         return jsonify({"response": response.text})
     except Exception as e:
         print(f"Error generating content from Gemini: {e}")
