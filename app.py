@@ -3,7 +3,7 @@ from flask_cors import CORS
 import os
 import random
 from datetime import datetime
-import google.generativeai as genai
+import google.genai as genai
 
 app = Flask(__name__)
 
