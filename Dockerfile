@@ -1,22 +1,23 @@
-# Use an official Python runtime as a parent image
-# We are upgrading the version to 3.10 to support spellchecker==0.7.1
-FROM python:3.10-slim
+# Use a Python 3.11 base image for better performance and security
+FROM python:3.11-slim
 
-# Set the working directory in the container
+# Set the working directory inside the container
 WORKDIR /app
 
-# Copy the requirements.txt file and install the dependencies
+# Copy the requirements file first to leverage Docker's caching
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
 
-# Download necessary NLTK data during the build process
-RUN python -c "import nltk; nltk.download('wordnet'); nltk.download('omw-1.4')"
+# Install the Python dependencies
+RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy the rest of the application files into the container
 COPY . .
 
+# Set the FLASK_APP environment variable so Flask knows which file to run
+ENV FLASK_APP=app.py
+
 # Expose port 5000 for the Flask application
 EXPOSE 5000
 
-# Run the application
-CMD ["python", "app.py"]
+# Run the application with Flask's built-in development server
+CMD ["flask", "run", "--host=0.0.0.0", "--port=5000"]
