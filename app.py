@@ -7,7 +7,6 @@ import traceback
 app = Flask(__name__)
 
 # --- CORS Configuration ---
-# IMPORTANT: Replace the URL below with your deployed front end's URL
 SITE_URL = "https://llwai.netlify.app"
 CORS(app, origins=SITE_URL)
 
@@ -16,16 +15,16 @@ client = genai.Client()
 
 # --- Initialize Gemini Model ---
 model_name = "gemini-2.5-flash"
+# NEW: Get the specific model to use for chat
+model = client.models.get(model_name)
 
 @app.route('/chat', methods=['POST'])
 def chat():
     data = request.json
-    # Get the full chat history from the request, default to an empty list
     chat_history = data.get('history', [])
     user_name = data.get('userName', None)
     user_timezone = data.get('timezone', None)
     
-    # NEW: Check if the last message exists in the history before trying to access it
     if not chat_history or not chat_history[-1].get('parts'):
         return jsonify({"error": "No message provided"}), 400
 
@@ -42,11 +41,12 @@ def chat():
             "Keep your answers varied and natural. "
         )
         
-        # The model's conversation now includes the system instruction
-        # and the full chat history. The prompt is handled differently.
-        chat_session = client.models.start_chat(
-            model=model_name,
-            history=chat_history[:-1] # Exclude the last message (the new user message)
+        # CORRECTED: start_chat is now called on the specific model object
+        chat_session = model.start_chat(
+            history=chat_history[:-1],
+            # System instructions are not directly supported by the start_chat method in this version,
+            # so the best way to handle persona is by including it in the first message or
+            # as part of the initial chat history.
         )
         
         # The new message is sent to the chat session
