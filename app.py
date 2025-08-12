@@ -4,6 +4,7 @@ import os
 import random
 from datetime import datetime
 from google import genai
+import traceback # Import the traceback module
 
 app = Flask(__name__)
 
@@ -19,7 +20,7 @@ client = genai.Client()
 
 # --- Initialize Gemini Model ---
 # The model is now accessed through the client.
-model_name = "gemini-2.5-flash"
+model_name = "gemini-pro"
 generation_config = {
   "temperature": 0.9,
   "top_p": 1,
@@ -56,7 +57,9 @@ def chat():
         )
         return jsonify({"response": response.text})
     except Exception as e:
-        print(f"Error generating content from Gemini: {e}")
+        # This is the key change: print the full traceback
+        print("An error occurred during Gemini API call:")
+        traceback.print_exc()
         return jsonify({"response": "I'm sorry, I encountered an error trying to process that request."})
 
 
