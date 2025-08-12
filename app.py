@@ -3,7 +3,7 @@ from flask_cors import CORS
 import os
 import random
 from datetime import datetime
-import google.genai as genai
+from google.genai import GenerativeModel # The GenerativeModel is imported directly now
 
 app = Flask(__name__)
 
@@ -26,8 +26,8 @@ generation_config = {
   "max_output_tokens": 2048,
 }
 
-# The API key is now passed directly here
-model = genai.GenerativeModel("gemini-pro", generation_config=generation_config, api_key=API_KEY)
+# The API key is passed directly here
+model = GenerativeModel("gemini-pro", generation_config=generation_config, api_key=API_KEY)
 
 
 @app.route('/chat', methods=['POST'])
