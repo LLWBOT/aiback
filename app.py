@@ -18,9 +18,6 @@ API_KEY = os.getenv("GEMINI_API_KEY")
 if not API_KEY:
     raise ValueError("GEMINI_API_KEY environment variable is not set. Please configure it.")
 
-genai.configure(api_key=API_KEY)
-
-
 # --- Initialize Gemini Model ---
 generation_config = {
   "temperature": 0.9,
@@ -28,7 +25,9 @@ generation_config = {
   "top_k": 1,
   "max_output_tokens": 2048,
 }
-model = genai.GenerativeModel("gemini-pro", generation_config=generation_config)
+
+# The API key is now passed directly here
+model = genai.GenerativeModel("gemini-pro", generation_config=generation_config, api_key=API_KEY)
 
 
 @app.route('/chat', methods=['POST'])
