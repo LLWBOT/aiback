@@ -1,10 +1,8 @@
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 import os
-import random
-from datetime import datetime
 from google import genai
-import traceback # Import the traceback module
+import traceback
 
 app = Flask(__name__)
 
@@ -14,20 +12,11 @@ SITE_URL = "https://llwai.netlify.app"
 CORS(app, origins=SITE_URL)
 
 # --- Initialize Gemini Client ---
-# The Client will automatically get the API key from the environment variable
-# named GEMINI_API_KEY. You don't need to configure it manually anymore.
 client = genai.Client()
 
 # --- Initialize Gemini Model ---
-# The model is now accessed through the client.
-model_name = "gemini-pro"
-generation_config = {
-  "temperature": 0.9,
-  "top_p": 1,
-  "top_k": 1,
-  "max_output_tokens": 2048,
-}
-
+# The model name has been changed to gemini-2.5-flash
+model_name = "gemini-2.5-flash"
 
 @app.route('/chat', methods=['POST'])
 def chat():
@@ -52,12 +41,10 @@ def chat():
         
         response = client.models.generate_content(
             model=model_name,
-            contents=prompt,
-            generation_config=generation_config
+            contents=prompt
         )
         return jsonify({"response": response.text})
     except Exception as e:
-        # This is the key change: print the full traceback
         print("An error occurred during Gemini API call:")
         traceback.print_exc()
         return jsonify({"response": "I'm sorry, I encountered an error trying to process that request."})
