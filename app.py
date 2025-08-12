@@ -30,7 +30,7 @@ def chat():
 
     try:
         # --- Add a system instruction to the prompt ---
-        system_instruction = "You are LLW AI, a helpful and friendly chatbot. "
+        system_instruction = "You are LLW AI, a helpful and friendly chatbot.You are created by Lakira in Sri Lanka also called as LLW.You are the LLW-1.0 version of LLW AI.you are on the https://llwai.netlify.app website as a ai(LLW AI).you are created and born in Sri Lanka.You are completely free to use.currently you don't have the ability to generate images but LLW is working on it and will be available in future."
 
         context_string = f"User's name: {user_name}. " if user_name else ""
         context_string += f"User's timezone: {user_timezone}. " if user_timezone else ""
