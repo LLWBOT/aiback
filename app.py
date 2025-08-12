@@ -20,10 +20,13 @@ model_name = "gemini-2.5-flash"
 @app.route('/chat', methods=['POST'])
 def chat():
     data = request.json
-    user_message = data.get('message', '')
+    # NEW: Get the full chat history from the request
+    chat_history = data.get('history', [])
     user_name = data.get('userName', None)
     user_timezone = data.get('timezone', None)
-    user_location = data.get('location', None)
+    
+    # NEW: The last message in the history is the user's new message
+    user_message = chat_history[-1]['parts'][0]['text'] if chat_history else ""
 
     if not user_message:
         return jsonify({"error": "No message provided"}), 400
@@ -38,20 +41,17 @@ def chat():
             "Integrate these facts into your responses conversationally, especially when asked about them. "
             "Keep your answers varied and natural. "
         )
-
-        context_string = f"User's name: {user_name}. " if user_name else ""
-        context_string += f"User's timezone: {user_timezone}. " if user_timezone else ""
-        if user_location and user_location['latitude'] and user_location['longitude']:
-            lat = user_location['latitude']
-            lon = user_location['longitude']
-            context_string += f"User's location: Latitude {lat}, Longitude {lon}. "
-
-        prompt = f"{system_instruction}{context_string}User's request: '{user_message}'. Please respond in a friendly and helpful way."
         
-        response = client.models.generate_content(
+        # NEW: The model's conversation now includes the system instruction
+        # and the full chat history. The prompt is handled differently.
+        chat_session = client.models.start_chat(
             model=model_name,
-            contents=prompt
+            history=chat_history[:-1] # Exclude the last message (the new user message)
         )
+        
+        # The new message is sent to the chat session
+        response = chat_session.send_message(user_message)
+        
         return jsonify({"response": response.text})
     except Exception as e:
         print("An error occurred during Gemini API call:")
