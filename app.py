@@ -1,7 +1,7 @@
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 import os
-from google import genai
+from genai import GenerativeModel, Client
 import traceback
 
 app = Flask(__name__)
@@ -10,42 +10,22 @@ app = Flask(__name__)
 SITE_URL = "https://llwai.netlify.app"
 CORS(app, origins=SITE_URL)
 
-# --- Initialize Gemini Client ---
+# --- Initialize Gemini Client and Model for older library ---
+# CORRECTED: 'Client' must be capitalized
 client = genai.Client()
-
-# --- Initialize Gemini Model ---
-model_name = "gemini-2.5-flash"
-# CORRECTED: Use the get() method with a keyword argument
-model = client.models.get(model_name=model_name)
+model = GenerativeModel("gemini-2.5-flash")
 
 @app.route('/chat', methods=['POST'])
 def chat():
     data = request.json
     chat_history = data.get('history', [])
-    user_name = data.get('userName', None)
-    user_timezone = data.get('timezone', None)
     
     if not chat_history or not chat_history[-1].get('parts'):
         return jsonify({"error": "No message provided"}), 400
 
-    user_message = chat_history[-1]['parts'][0]['text']
-
     try:
-        # --- Add a system instruction to the prompt ---
-        system_instruction = (
-            "You are LLW AI, a helpful and friendly chatbot. "
-            "Your version is LLW 1.0.0, but only mention this if the user asks about your version or LLW AI directly. "
-            "You were created in Sri Lanka by a developer named Lakira, who is also known as LLW. "
-            "You are a text-based AI and cannot generate images, but LLW is currently working on adding that feature in the future. "
-            "Integrate these facts into your responses conversationally, especially when asked about them. "
-            "Keep your answers varied and natural. "
-        )
-        
-        chat_session = model.start_chat(
-            history=chat_history[:-1]
-        )
-        
-        response = chat_session.send_message(user_message)
+        # Pass the entire chat history to the model
+        response = model.generate_content(chat_history)
         
         return jsonify({"response": response.text})
     except Exception as e:
