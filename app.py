@@ -20,16 +20,16 @@ model_name = "gemini-2.5-flash"
 @app.route('/chat', methods=['POST'])
 def chat():
     data = request.json
-    # NEW: Get the full chat history from the request
+    # Get the full chat history from the request, default to an empty list
     chat_history = data.get('history', [])
     user_name = data.get('userName', None)
     user_timezone = data.get('timezone', None)
     
-    # NEW: The last message in the history is the user's new message
-    user_message = chat_history[-1]['parts'][0]['text'] if chat_history else ""
-
-    if not user_message:
+    # NEW: Check if the last message exists in the history before trying to access it
+    if not chat_history or not chat_history[-1].get('parts'):
         return jsonify({"error": "No message provided"}), 400
+
+    user_message = chat_history[-1]['parts'][0]['text']
 
     try:
         # --- Add a system instruction to the prompt ---
@@ -42,7 +42,7 @@ def chat():
             "Keep your answers varied and natural. "
         )
         
-        # NEW: The model's conversation now includes the system instruction
+        # The model's conversation now includes the system instruction
         # and the full chat history. The prompt is handled differently.
         chat_session = client.models.start_chat(
             model=model_name,
