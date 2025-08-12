@@ -16,7 +16,7 @@ client = genai.Client()
 # --- Initialize Gemini Model ---
 model_name = "gemini-2.5-flash"
 # CORRECTED: Access the model directly from the client object
-model = client.models(model_name)
+model = client.get_model(model_name)
 
 @app.route('/chat', methods=['POST'])
 def chat():
