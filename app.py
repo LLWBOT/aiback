@@ -9,15 +9,17 @@ app = Flask(__name__)
 
 # --- CORS Configuration ---
 # IMPORTANT: Replace the URL below with your deployed front end's URL
-SITE_URL = "https://llwai.netlify.app" 
+SITE_URL = "https://llwai.netlify.app"
 CORS(app, origins=SITE_URL)
 
 # --- API Key Configuration ---
-try:
-    genai.configure(api_key=os.environ["GEMINI_API_KEY"])
-except KeyError:
-    print("Warning: GEMINI_API_KEY environment variable not set. Functionality may be limited.")
-    genai.configure(api_key="YOUR_FALLBACK_API_KEY_HERE")
+# We directly get the API key from the environment variable.
+API_KEY = os.getenv("GEMINI_API_KEY")
+if not API_KEY:
+    raise ValueError("GEMINI_API_KEY environment variable is not set. Please configure it.")
+
+genai.configure(api_key=API_KEY)
+
 
 # --- Initialize Gemini Model ---
 generation_config = {
@@ -57,6 +59,7 @@ def chat():
     except Exception as e:
         print(f"Error generating content from Gemini: {e}")
         return jsonify({"response": "I'm sorry, I encountered an error trying to process that request."})
+
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=os.environ.get('PORT', 5000))
