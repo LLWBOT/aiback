@@ -11,11 +11,12 @@ SITE_URL = "https://llwai.netlify.app"
 CORS(app, origins=SITE_URL)
 
 # --- Initialize Gemini Client ---
-genai.configure(api_key=os.environ.get("GEMINI_API_KEY"))  # Make sure your API key is set
+client = genai.Client()
 
 # --- Initialize Gemini Model ---
-model_name = "gemini-2.5-flash"  # or "gemini-1.5-pro", depending on availability
-model = genai.GenerativeModel(model_name=model_name)
+model_name = "gemini-2.5-flash"
+# CORRECTED: Use the get() method with a keyword argument
+model = client.models.get(model_name=model_name)
 
 @app.route('/chat', methods=['POST'])
 def chat():
@@ -39,14 +40,13 @@ def chat():
             "Integrate these facts into your responses conversationally, especially when asked about them. "
             "Keep your answers varied and natural. "
         )
-
-        # --- Start a chat session with history ---
-        chat_session = model.start_chat(history=chat_history[:-1])
-
-        # --- Send message with system instruction prepended ---
-        full_prompt = f"{system_instruction}\n\n{user_message}"
-        response = chat_session.send_message(full_prompt)
-
+        
+        chat_session = model.start_chat(
+            history=chat_history[:-1]
+        )
+        
+        response = chat_session.send_message(user_message)
+        
         return jsonify({"response": response.text})
     except Exception as e:
         print("An error occurred during Gemini API call:")
@@ -55,4 +55,4 @@ def chat():
 
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 5000)))
+    app.run(host='0.0.0.0', port=os.environ.get('PORT', 5000))
