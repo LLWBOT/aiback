@@ -14,9 +14,9 @@ CORS(app, origins=SITE_URL)
 
 # --- API Key Configuration ---
 try:
-    genai.configure(api_key=os.environ["GOOGLE_API_KEY"])
+    genai.configure(api_key=os.environ["GEMINI_API_KEY"])
 except KeyError:
-    print("Warning: GOOGLE_API_KEY environment variable not set. Functionality may be limited.")
+    print("Warning: GEMINI_API_KEY environment variable not set. Functionality may be limited.")
     genai.configure(api_key="YOUR_FALLBACK_API_KEY_HERE")
 
 # --- Initialize Gemini Model ---
