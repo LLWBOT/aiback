@@ -15,8 +15,8 @@ client = genai.Client()
 
 # --- Initialize Gemini Model ---
 model_name = "gemini-2.5-flash"
-# NEW: Get the specific model to use for chat
-model = client.models.get(model_name)
+# CORRECTED: Use the get_model() method to retrieve the model object
+model = client.models.get_model(model_name)
 
 @app.route('/chat', methods=['POST'])
 def chat():
@@ -41,15 +41,10 @@ def chat():
             "Keep your answers varied and natural. "
         )
         
-        # CORRECTED: start_chat is now called on the specific model object
         chat_session = model.start_chat(
-            history=chat_history[:-1],
-            # System instructions are not directly supported by the start_chat method in this version,
-            # so the best way to handle persona is by including it in the first message or
-            # as part of the initial chat history.
+            history=chat_history[:-1]
         )
         
-        # The new message is sent to the chat session
         response = chat_session.send_message(user_message)
         
         return jsonify({"response": response.text})
