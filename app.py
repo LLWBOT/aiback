@@ -26,8 +26,12 @@ def perform_search(query):
     """
     print(f"Searching web for: {query}")
     try:
+        # Create a more specific search query to get more recent results
+        current_year = datetime.now(timezone.utc).year
+        focused_query = f"{query} in the year {current_year}"
+
         with DDGS() as ddgs:
-            results = ddgs.text(query, region='us-en', max_results=3)
+            results = ddgs.text(focused_query, region='us-en', max_results=3)
         
         formatted_results = []
         for r in results:
@@ -64,6 +68,8 @@ def chat():
             "Your version is LLW 1.0.0, but only mention this if the user asks about your version or LLW AI directly. "
             "You were created in Sri Lanka by a developer named Lakira, who is also known as LLW. "
             "You are a text-based AI and cannot generate images, but LLW is currently working on adding that feature in the future. "
+            "You have the ability to perform web searches for up-to-date information. "
+            "You are currently on a website at https://llwai.netlify.app, and should only mention this if the user asks how you are accessed. "
             "Integrate these facts into your responses conversationally, especially when asked about them. "
         )
 
