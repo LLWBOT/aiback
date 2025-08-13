@@ -13,11 +13,13 @@ app = Flask(__name__)
 SITE_URL = "https://llwai.netlify.app"
 CORS(app, origins=SITE_URL)
 
-# --- Initialize Gemini API with your environment variable ---
+# --- Initialize Gemini Client ---
+# Using the original syntax that works with your library version
 try:
-    genai.configure(api_key=os.environ['GOOGLE_API_KEY'])
-except KeyError:
-    print("Error: GOOGLE_API_KEY environment variable not set.")
+    client = genai.Client()
+except Exception as e:
+    print(f"Error initializing Gemini client: {e}")
+    # Handle the error, perhaps by exiting or returning a message
 
 # --- Initialize Gemini Model ---
 model_name = "gemini-2.5-flash"
@@ -79,6 +81,7 @@ def chat():
             lon = user_location['longitude']
             context_string += f"User's location: Latitude {lat}, Longitude {lon}. "
         
+        # Concatenate all instructions and facts into a single prompt
         prompt = (
             f"{system_instruction}"
             f"**Current Facts:** The current year is 2025."
@@ -87,13 +90,16 @@ def chat():
             f"**User Request:** Based on the search results I provided, please answer the user's request. Always start your response with 'Based on a quick web search, I found...' and then provide the answer in a friendly and helpful way. The user's request is: '{user_message}'."
         )
 
+        # Log the full prompt to verify the search results are included
         print("-" * 50)
         print("Full Prompt Sent to Gemini:")
         print(prompt)
         print("-" * 50)
 
-        model = genai.GenerativeModel(model_name)
-        response = model.generate_content(contents=prompt)
+        response = client.models.generate_content(
+            model=model_name,
+            contents=prompt
+        )
 
         return jsonify({"response": response.text})
     except Exception as e:
