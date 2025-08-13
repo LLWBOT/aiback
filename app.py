@@ -14,12 +14,10 @@ SITE_URL = "https://llwai.netlify.app"
 CORS(app, origins=SITE_URL)
 
 # --- Initialize Gemini Client ---
-# Using the original syntax that works with your library version
 try:
     client = genai.Client()
 except Exception as e:
     print(f"Error initializing Gemini client: {e}")
-    # Handle the error, perhaps by exiting or returning a message
 
 # --- Initialize Gemini Model ---
 model_name = "gemini-2.5-flash"
@@ -49,7 +47,29 @@ def perform_search(query):
         return "\n".join(results[:3])
     except requests.RequestException as e:
         print(f"Error during search: {e}")
-        return "No search results found due to an error."
+        # Return an empty string on error so the model doesn't get bad data
+        return ""
+
+def should_perform_search_ai(message):
+    """
+    Uses the AI to decide if a web search is necessary.
+    """
+    search_prompt = (
+        "Is a web search necessary to answer this user request with recent or specific information? "
+        "Respond with a single word: 'YES' or 'NO'."
+        f"User request: '{message}'"
+    )
+    
+    try:
+        model = genai.GenerativeModel(model_name)
+        response = model.generate_content(contents=search_prompt)
+        decision = response.text.strip().upper()
+        print(f"AI search decision: {decision}")
+        return decision == 'YES'
+    except Exception as e:
+        print(f"Error during AI search decision: {e}")
+        traceback.print_exc()
+        return False # Default to no search if the decision fails
 
 @app.route('/chat', methods=['POST'])
 def chat():
@@ -64,8 +84,6 @@ def chat():
         return jsonify({"error": "No message provided"}), 400
 
     try:
-        search_results = perform_search(user_message)
-        
         system_instruction = (
             "You are LLW AI, a helpful and friendly chatbot. "
             "Your version is LLW 1.0.0, but only mention this if the user asks about your version or LLW AI directly. "
@@ -80,28 +98,47 @@ def chat():
             lat = user_location['latitude']
             lon = user_location['longitude']
             context_string += f"User's location: Latitude {lat}, Longitude {lon}. "
-        
-        # Concatenate all instructions and facts into a single prompt
-        prompt = (
-            f"{system_instruction}"
-            f"**Current Facts:** The current year is 2025."
-            f"**Web Search Results:** {search_results}"
-            f"**User Context:** {context_string}"
-            f"**User Request:** Based on the search results I provided, please answer the user's request. Always start your response with 'Based on a quick web search, I found...' and then provide the answer in a friendly and helpful way. The user's request is: '{user_message}'."
-        )
 
-        # Log the full prompt to verify the search results are included
+        # --- NEW LOGIC: AI-POWERED CONDITIONAL SEARCH ---
+        search_results = ""
+        prompt_prefix = ""
+        
+        if should_perform_search_ai(user_message):
+            search_results = perform_search(user_message)
+            if search_results:
+                prompt_prefix = "Based on a quick web search, I found..."
+            
+            # Construct the full prompt for a search-based response
+            full_prompt = (
+                f"{system_instruction}"
+                f"**Current Facts:** The current year is 2025."
+                f"**Web Search Results:** {search_results}"
+                f"**User Context:** {context_string}"
+                f"**User Request:** Based on the search results I provided, please answer the user's request. The user's request is: '{user_message}'."
+            )
+        else:
+            # Construct a simpler prompt for a direct, conversation-based response
+            full_prompt = (
+                f"{system_instruction}"
+                f"**Current Facts:** The current year is 2025."
+                f"**User Context:** {context_string}"
+                f"**User Request:** Please respond to the user's message in a friendly and helpful way. The user's message is: '{user_message}'."
+            )
+
         print("-" * 50)
         print("Full Prompt Sent to Gemini:")
-        print(prompt)
+        print(full_prompt)
         print("-" * 50)
 
         response = client.models.generate_content(
             model=model_name,
-            contents=prompt
+            contents=full_prompt
         )
+        
+        # Add the attribution prefix only if a search was performed and was successful
+        final_response = f"{prompt_prefix} {response.text}" if prompt_prefix else response.text
 
-        return jsonify({"response": response.text})
+        return jsonify({"response": final_response})
     except Exception as e:
         print("An error occurred during Gemini API call:")
         traceback.print_exc()
