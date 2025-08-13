@@ -13,8 +13,11 @@ app = Flask(__name__)
 SITE_URL = "https://llwai.netlify.app"
 CORS(app, origins=SITE_URL)
 
-# --- Initialize Gemini Client ---
-client = genai.Client()
+# --- Initialize Gemini API with your environment variable ---
+try:
+    genai.configure(api_key=os.environ['GOOGLE_API_KEY'])
+except KeyError:
+    print("Error: GOOGLE_API_KEY environment variable not set.")
 
 # --- Initialize Gemini Model ---
 model_name = "gemini-2.5-flash"
@@ -23,24 +26,24 @@ def perform_search(query):
     """
     Performs a web search using a free search engine and scrapes the top results.
     """
+    print(f"Searching web for: {query}")
     search_url = f"https://duckduckgo.com/html/?q={query}"
     headers = {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3'
     }
     try:
         response = requests.get(search_url, headers=headers, timeout=10)
-        response.raise_for_status()  # Raise an exception for bad status codes
+        response.raise_for_status()
         
         soup = BeautifulSoup(response.text, 'html.parser')
         results = []
-        # Find the search results on the page
         for result in soup.find_all('div', class_='result'):
             title = result.find('a', class_='result__a')
             snippet = result.find('div', class_='result__snippet')
             if title and snippet:
                 results.append(f"{title.text}: {snippet.text}")
         
-        # Return only the top few results to keep the prompt concise
+        print("Search complete. Found results.")
         return "\n".join(results[:3])
     except requests.RequestException as e:
         print(f"Error during search: {e}")
@@ -54,17 +57,13 @@ def chat():
     user_timezone = data.get('timezone', None)
     user_location = data.get('location', None)
 
+    print("Received user message...")
     if not user_message:
         return jsonify({"error": "No message provided"}), 400
 
     try:
-        # Perform a web search for the user's message
         search_results = perform_search(user_message)
-
-        # --- Define Current Facts and Instructions ---
-        current_year_fact = "The current year is 2025."
         
-        # --- Add a system instruction to the prompt ---
         system_instruction = (
             "You are LLW AI, a helpful and friendly chatbot. "
             "Your version is LLW 1.0.0, but only mention this if the user asks about your version or LLW AI directly. "
@@ -80,19 +79,22 @@ def chat():
             lon = user_location['longitude']
             context_string += f"User's location: Latitude {lat}, Longitude {lon}. "
         
-        # Concatenate all instructions and facts into a single prompt
         prompt = (
             f"{system_instruction}"
-            f"**Current Facts:** {current_year_fact}"
+            f"**Current Facts:** The current year is 2025."
             f"**Web Search Results:** {search_results}"
             f"**User Context:** {context_string}"
-            f"**User Request:** '{user_message}'. Please respond in a friendly and helpful way."
+            f"**User Request:** Based on the search results I provided, please answer the user's request. Always start your response with 'Based on a quick web search, I found...' and then provide the answer in a friendly and helpful way. The user's request is: '{user_message}'."
         )
-        
-        response = client.models.generate_content(
-            model=model_name,
-            contents=prompt
-        )
+
+        print("-" * 50)
+        print("Full Prompt Sent to Gemini:")
+        print(prompt)
+        print("-" * 50)
+
+        model = genai.GenerativeModel(model_name)
+        response = model.generate_content(contents=prompt)
+
         return jsonify({"response": response.text})
     except Exception as e:
         print("An error occurred during Gemini API call:")
