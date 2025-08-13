@@ -16,7 +16,6 @@ CORS(app, origins=SITE_URL)
 try:
     client = genai.Client()
     main_model_name = "gemini-2.5-flash"
-    # We no longer need a separate decision model
 except Exception as e:
     print(f"Error initializing Gemini client: {e}")
     client = None
@@ -34,22 +33,23 @@ def perform_search(query):
     try:
         response = requests.post(search_url, headers=headers, data=params, timeout=10)
         response.raise_for_status()
-        
+
         soup = BeautifulSoup(response.text, 'html.parser')
         results = []
-        for result in soup.find_all('div', class_='results_links_deep'):
-            title = result.find('a', class_='result__a')
-            snippet = result.find('div', class_='result__snippet')
-            if title and snippet:
-                results.append(f"{title.text}: {snippet.text}")
-        
+        for result in soup.find_all('div', class_='result'):
+            title_tag = result.find('h2', class_='result__title')
+            snippet_tag = result.find('div', class_='result__snippet')
+
+            if title_tag and snippet_tag:
+                title = title_tag.text.strip()
+                snippet = snippet_tag.text.strip()
+                results.append(f"{title}: {snippet}")
+
         print(f"Search complete. Found {len(results)} results.")
         return "\n".join(results[:3])
     except requests.RequestException as e:
         print(f"Error during search: {e}")
         return ""
-
-# The should_perform_search_ai function is no longer needed
 
 @app.route('/chat', methods=['POST'])
 def chat():
@@ -82,8 +82,6 @@ def chat():
             lon = user_location['longitude']
             context_string += f"User's location: Latitude {lat}, Longitude {lon}. "
 
-        # Step 1: Initial prompt for a direct answer.
-        # We explicitly instruct the model to state if it needs a search.
         initial_prompt = (
             f"{system_instruction}"
             f"**Current Facts:** The current year is 2025."
@@ -101,7 +99,6 @@ def chat():
             contents=initial_prompt
         )
 
-        # Step 2: Check the initial response for the trigger phrase
         response_text = initial_response.text.strip()
         search_trigger = "I need to perform a search for this information."
 
@@ -112,7 +109,6 @@ def chat():
             if search_results:
                 prompt_prefix = "Based on a quick web search, I found..."
                 
-                # Step 3: Re-prompt the model with search results
                 final_prompt = (
                     f"{system_instruction}"
                     f"**Current Facts:** The current year is 2025."
@@ -134,7 +130,6 @@ def chat():
             else:
                 final_response_text = "I'm sorry, I was unable to find any relevant information to answer that question."
         else:
-            # Step 4: No search needed, use the initial response
             final_response_text = response_text
 
         return jsonify({"response": final_response_text})
