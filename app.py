@@ -3,8 +3,9 @@ from flask_cors import CORS
 import os
 from google import genai
 import traceback
-from bs4 import BeautifulSoup
-import requests
+# We are no longer using requests or BeautifulSoup for searching
+# Instead, we'll use a dedicated library
+from duckduckgo_search import DDGS
 
 app = Flask(__name__)
 
@@ -22,32 +23,22 @@ except Exception as e:
 
 def perform_search(query):
     """
-    Performs a more reliable web search using a different DuckDuckGo endpoint.
+    Performs a web search using the duckduckgo-search library.
     """
     print(f"Searching web for: {query}")
-    search_url = "https://html.duckduckgo.com/html"
-    headers = {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3'
-    }
-    params = {'q': query}
     try:
-        response = requests.post(search_url, headers=headers, data=params, timeout=10)
-        response.raise_for_status()
-
-        soup = BeautifulSoup(response.text, 'html.parser')
-        results = []
-        for result in soup.find_all('div', class_='result'):
-            title_tag = result.find('h2', class_='result__title')
-            snippet_tag = result.find('div', class_='result__snippet')
-
-            if title_tag and snippet_tag:
-                title = title_tag.text.strip()
-                snippet = snippet_tag.text.strip()
-                results.append(f"{title}: {snippet}")
-
-        print(f"Search complete. Found {len(results)} results.")
-        return "\n".join(results[:3])
-    except requests.RequestException as e:
+        with DDGS() as ddgs:
+            results = ddgs.text(keywords=query, max_results=3)
+        
+        formatted_results = []
+        for r in results:
+            title = r.get('title', 'No Title')
+            body = r.get('body', 'No Snippet')
+            formatted_results.append(f"{title}: {body}")
+            
+        print(f"Search complete. Found {len(formatted_results)} results.")
+        return "\n".join(formatted_results)
+    except Exception as e:
         print(f"Error during search: {e}")
         return ""
 
