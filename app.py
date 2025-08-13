@@ -64,7 +64,7 @@ def should_perform_search_ai(message):
         return False
         
     try:
-        response = client.generate_content(
+        response = client.models.generate_content(
             model=decision_model_name,
             contents=search_prompt
         )
@@ -137,7 +137,7 @@ def chat():
         print(full_prompt)
         print("-" * 50)
 
-        response = client.generate_content(
+        response = client.models.generate_content(
             model=main_model_name,
             contents=full_prompt
         )
