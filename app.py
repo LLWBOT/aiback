@@ -1,7 +1,7 @@
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 import os
-from google import genai
+import google.generativeai as genai # <-- CORRECT IMPORT
 import traceback
 from bs4 import BeautifulSoup
 import requests
@@ -14,13 +14,14 @@ SITE_URL = "https://llwai.netlify.app"
 CORS(app, origins=SITE_URL)
 
 # --- Initialize Gemini Client ---
+# Using the recommended method for the latest library
 try:
-    client = genai.Client()
+    genai.configure(api_key=os.environ["GEMINI_API_KEY"])
 except Exception as e:
     print(f"Error initializing Gemini client: {e}")
 
 # --- Initialize Gemini Model ---
-model_name = "gemini-2.5-flash"
+model_name = "gemini-1.5-flash"
 
 def perform_search(query):
     """
@@ -47,7 +48,6 @@ def perform_search(query):
         return "\n".join(results[:3])
     except requests.RequestException as e:
         print(f"Error during search: {e}")
-        # Return an empty string on error so the model doesn't get bad data
         return ""
 
 def should_perform_search_ai(message):
@@ -69,7 +69,7 @@ def should_perform_search_ai(message):
     except Exception as e:
         print(f"Error during AI search decision: {e}")
         traceback.print_exc()
-        return False # Default to no search if the decision fails
+        return False
 
 @app.route('/chat', methods=['POST'])
 def chat():
@@ -99,7 +99,6 @@ def chat():
             lon = user_location['longitude']
             context_string += f"User's location: Latitude {lat}, Longitude {lon}. "
 
-        # --- NEW LOGIC: AI-POWERED CONDITIONAL SEARCH ---
         search_results = ""
         prompt_prefix = ""
         
@@ -108,7 +107,6 @@ def chat():
             if search_results:
                 prompt_prefix = "Based on a quick web search, I found..."
             
-            # Construct the full prompt for a search-based response
             full_prompt = (
                 f"{system_instruction}"
                 f"**Current Facts:** The current year is 2025."
@@ -117,7 +115,6 @@ def chat():
                 f"**User Request:** Based on the search results I provided, please answer the user's request. The user's request is: '{user_message}'."
             )
         else:
-            # Construct a simpler prompt for a direct, conversation-based response
             full_prompt = (
                 f"{system_instruction}"
                 f"**Current Facts:** The current year is 2025."
@@ -130,12 +127,11 @@ def chat():
         print(full_prompt)
         print("-" * 50)
 
-        response = client.models.generate_content(
-            model=model_name,
+        model = genai.GenerativeModel(model_name)
+        response = model.generate_content(
             contents=full_prompt
         )
         
-        # Add the attribution prefix only if a search was performed and was successful
         final_response = f"{prompt_prefix} {response.text}" if prompt_prefix else response.text
 
         return jsonify({"response": final_response})
