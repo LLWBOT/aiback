@@ -1,7 +1,7 @@
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 import os
-from google import genai # This is the correct import for the 'google-genai' library
+from google import genai
 import traceback
 from bs4 import BeautifulSoup
 import requests
@@ -9,41 +9,41 @@ import requests
 app = Flask(__name__)
 
 # --- CORS Configuration ---
-# IMPORTANT: Replace the URL below with your deployed front end's URL
 SITE_URL = "https://llwai.netlify.app"
 CORS(app, origins=SITE_URL)
 
 # --- Initialize Gemini Client ---
 try:
-    client = genai.Client() # This is the correct way to initialize the client
+    client = genai.Client()
 except Exception as e:
     print(f"Error initializing Gemini client: {e}")
 
 # --- Initialize Gemini Model ---
-model_name = "gemini-2.5-flash"
+model_name = "gemini-1.5-flash"
 
 def perform_search(query):
     """
-    Performs a web search using a free search engine and scrapes the top results.
+    Performs a more reliable web search using a different DuckDuckGo endpoint.
     """
     print(f"Searching web for: {query}")
-    search_url = f"https://duckduckgo.com/html/?q={query}"
+    search_url = "https://html.duckduckgo.com/html"
     headers = {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3'
     }
+    params = {'q': query}
     try:
-        response = requests.get(search_url, headers=headers, timeout=10)
+        response = requests.post(search_url, headers=headers, data=params, timeout=10)
         response.raise_for_status()
         
         soup = BeautifulSoup(response.text, 'html.parser')
         results = []
-        for result in soup.find_all('div', class_='result'):
+        for result in soup.find_all('div', class_='results_links_deep'):
             title = result.find('a', class_='result__a')
             snippet = result.find('div', class_='result__snippet')
             if title and snippet:
                 results.append(f"{title.text}: {snippet.text}")
         
-        print("Search complete. Found results.")
+        print(f"Search complete. Found {len(results)} results.")
         return "\n".join(results[:3])
     except requests.RequestException as e:
         print(f"Error during search: {e}")
@@ -51,7 +51,7 @@ def perform_search(query):
 
 def should_perform_search_ai(message):
     """
-    Uses the AI to decide if a web search is necessary, using the correct client.
+    Uses the AI to decide if a web search is necessary.
     """
     search_prompt = (
         "Is a web search necessary to answer this user request with recent or specific information? "
