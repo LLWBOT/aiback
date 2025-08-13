@@ -68,9 +68,16 @@ def should_perform_search_ai(message):
             model=decision_model_name,
             contents=search_prompt
         )
-        decision = response.text.strip().upper()
-        print(f"AI search decision: {decision}")
-        return decision == 'YES'
+        
+        # Add a safety check here to prevent the AttributeError
+        if response and response.text:
+            decision = response.text.strip().upper()
+            print(f"AI search decision: {decision}")
+            return decision == 'YES'
+        else:
+            print("API call returned an empty or invalid response for search decision.")
+            return False
+
     except Exception as e:
         print(f"Error during AI search decision: {e}")
         traceback.print_exc()
@@ -136,12 +143,12 @@ def chat():
         print("Full Prompt Sent to Gemini:")
         print(full_prompt)
         print("-" * 50)
-
+        
         response = client.models.generate_content(
             model=main_model_name,
             contents=full_prompt
         )
-        
+
         final_response = f"{prompt_prefix} {response.text}" if prompt_prefix else response.text
 
         return jsonify({"response": final_response})
