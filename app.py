@@ -27,7 +27,7 @@ def perform_search(query):
     print(f"Searching web for: {query}")
     try:
         with DDGS() as ddgs:
-            results = ddgs.text(keywords=query, region='us-en', max_results=3)
+            results = ddgs.text(query, region='us-en', max_results=3)
         
         formatted_results = []
         for r in results:
