@@ -1,6 +1,4 @@
 Flask
 Flask-CORS
 google-genai
-requests
-beautifulsoup4
-duckduckgo-search
+ddgs
