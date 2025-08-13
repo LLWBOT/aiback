@@ -16,7 +16,7 @@ CORS(app, origins=SITE_URL)
 try:
     client = genai.Client()
     main_model_name = "gemini-2.5-flash"
-    decision_model_name = "gemini-2.5-pro"
+    # We no longer need a separate decision model
 except Exception as e:
     print(f"Error initializing Gemini client: {e}")
     client = None
@@ -49,39 +49,7 @@ def perform_search(query):
         print(f"Error during search: {e}")
         return ""
 
-def should_perform_search_ai(message):
-    """
-    Uses the AI to decide if a web search is necessary.
-    """
-    search_prompt = (
-        "Is a web search necessary to answer this user request with recent or specific information? "
-        "Respond with a single word: 'YES' or 'NO'."
-        f"User request: '{message}'"
-    )
-    
-    if not client:
-        print("Gemini client is not initialized. Skipping AI search decision.")
-        return False
-        
-    try:
-        response = client.models.generate_content(
-            model=decision_model_name,
-            contents=search_prompt
-        )
-        
-        # Add a safety check here to prevent the AttributeError
-        if response and response.text:
-            decision = response.text.strip().upper()
-            print(f"AI search decision: {decision}")
-            return decision == 'YES'
-        else:
-            print("API call returned an empty or invalid response for search decision.")
-            return False
-
-    except Exception as e:
-        print(f"Error during AI search decision: {e}")
-        traceback.print_exc()
-        return False
+# The should_perform_search_ai function is no longer needed
 
 @app.route('/chat', methods=['POST'])
 def chat():
@@ -114,44 +82,62 @@ def chat():
             lon = user_location['longitude']
             context_string += f"User's location: Latitude {lat}, Longitude {lon}. "
 
-        search_results = ""
-        prompt_prefix = ""
-        
-        should_search = should_perform_search_ai(user_message)
-        
-        if should_search:
-            search_results = perform_search(user_message)
-            if search_results:
-                prompt_prefix = "Based on a quick web search, I found..."
-            
-            full_prompt = (
-                f"{system_instruction}"
-                f"**Current Facts:** The current year is 2025."
-                f"**Web Search Results:** {search_results}"
-                f"**User Context:** {context_string}"
-                f"**User Request:** Based on the search results I provided, please answer the user's request. The user's request is: '{user_message}'."
-            )
-        else:
-            full_prompt = (
-                f"{system_instruction}"
-                f"**Current Facts:** The current year is 2025."
-                f"**User Context:** {context_string}"
-                f"**User Request:** Please respond to the user's message in a friendly and helpful way. The user's message is: '{user_message}'."
-            )
-
-        print("-" * 50)
-        print("Full Prompt Sent to Gemini:")
-        print(full_prompt)
-        print("-" * 50)
-        
-        response = client.models.generate_content(
-            model=main_model_name,
-            contents=full_prompt
+        # Step 1: Initial prompt for a direct answer.
+        # We explicitly instruct the model to state if it needs a search.
+        initial_prompt = (
+            f"{system_instruction}"
+            f"**Current Facts:** The current year is 2025."
+            f"**User Context:** {context_string}"
+            f"**User Request:** Please respond to the user's message. If you do not have enough information to provide an accurate answer, you must respond with the exact phrase: 'I need to perform a search for this information.' Otherwise, please answer the question directly. The user's message is: '{user_message}'."
         )
 
-        final_response = f"{prompt_prefix} {response.text}" if prompt_prefix else response.text
+        print("-" * 50)
+        print("Initial Prompt Sent to Gemini:")
+        print(initial_prompt)
+        print("-" * 50)
 
-        return jsonify({"response": final_response})
+        initial_response = client.models.generate_content(
+            model=main_model_name,
+            contents=initial_prompt
+        )
+
+        # Step 2: Check the initial response for the trigger phrase
+        response_text = initial_response.text.strip()
+        search_trigger = "I need to perform a search for this information."
+
+        if search_trigger in response_text:
+            print("AI decided to perform a search.")
+            search_results = perform_search(user_message)
+            
+            if search_results:
+                prompt_prefix = "Based on a quick web search, I found..."
+                
+                # Step 3: Re-prompt the model with search results
+                final_prompt = (
+                    f"{system_instruction}"
+                    f"**Current Facts:** The current year is 2025."
+                    f"**Web Search Results:** {search_results}"
+                    f"**User Context:** {context_string}"
+                    f"**User Request:** Based on the search results I provided, please answer the user's request. The user's request is: '{user_message}'."
+                )
+
+                print("-" * 50)
+                print("Final Prompt with Search Results Sent to Gemini:")
+                print(final_prompt)
+                print("-" * 50)
+
+                final_response = client.models.generate_content(
+                    model=main_model_name,
+                    contents=final_prompt
+                )
+                final_response_text = f"{prompt_prefix} {final_response.text.strip()}"
+            else:
+                final_response_text = "I'm sorry, I was unable to find any relevant information to answer that question."
+        else:
+            # Step 4: No search needed, use the initial response
+            final_response_text = response_text
+
+        return jsonify({"response": final_response_text})
     except Exception as e:
         print("An error occurred during Gemini API call:")
         traceback.print_exc()
