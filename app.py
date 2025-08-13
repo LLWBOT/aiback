@@ -106,14 +106,13 @@ def chat():
             search_results = perform_search(user_message)
             
             if search_results:
-                prompt_prefix = "Based on a quick web search, I found..."
                 
                 final_prompt = (
                     f"{system_instruction}"
                     f"**Current Facts:** The current year is 2025."
                     f"**Web Search Results:** {search_results}"
                     f"**User Context:** {context_string}"
-                    f"**User Request:** Based on the search results I provided, please answer the user's request. The user's request is: '{user_message}'."
+                    f"**User Request:** Based ONLY on the provided search results, answer the user's request. Do not use any external knowledge. If the search results do not contain the answer, say that you were unable to find the information. The user's request is: '{user_message}'."
                 )
 
                 print("-" * 50)
@@ -125,7 +124,7 @@ def chat():
                     model=main_model_name,
                     contents=final_prompt
                 )
-                final_response_text = f"{prompt_prefix} {final_response.text.strip()}"
+                final_response_text = final_response.text.strip()
             else:
                 final_response_text = "I'm sorry, I was unable to find any relevant information to answer that question."
         else:
