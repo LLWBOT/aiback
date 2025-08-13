@@ -3,9 +3,8 @@ from flask_cors import CORS
 import os
 from google import genai
 import traceback
-# We are no longer using requests or BeautifulSoup for searching
-# Instead, we'll use a dedicated library
-from duckduckgo_search import DDGS
+from ddgs import DDGS
+from datetime import datetime, timezone
 
 app = Flask(__name__)
 
@@ -23,12 +22,12 @@ except Exception as e:
 
 def perform_search(query):
     """
-    Performs a web search using the duckduckgo-search library.
+    Performs a web search using the ddgs library with a specified region.
     """
     print(f"Searching web for: {query}")
     try:
         with DDGS() as ddgs:
-            results = ddgs.text(keywords=query, max_results=3)
+            results = ddgs.text(keywords=query, region='us-en', max_results=3)
         
         formatted_results = []
         for r in results:
@@ -58,6 +57,8 @@ def chat():
         return jsonify({"response": "I'm sorry, I encountered an error during startup and cannot process requests."}), 500
 
     try:
+        current_utc_time = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
+
         system_instruction = (
             "You are LLW AI, a helpful and friendly chatbot. "
             "Your version is LLW 1.0.0, but only mention this if the user asks about your version or LLW AI directly. "
@@ -68,6 +69,7 @@ def chat():
 
         context_string = f"User's name: {user_name}. " if user_name else ""
         context_string += f"User's timezone: {user_timezone}. " if user_timezone else ""
+        context_string += f"Current time in UTC: {current_utc_time}. "
         if user_location and user_location['latitude'] and user_location['longitude']:
             lat = user_location['latitude']
             lon = user_location['longitude']
