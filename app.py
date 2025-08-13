@@ -12,15 +12,14 @@ app = Flask(__name__)
 SITE_URL = "https://llwai.netlify.app"
 CORS(app, origins=SITE_URL)
 
-# --- Initialize Gemini Client ---
+# --- Initialize Gemini Client and Models ---
 try:
     client = genai.Client()
+    main_model_name = "gemini-2.5-flash"
+    decision_model_name = "gemini-2.5-pro"
 except Exception as e:
     print(f"Error initializing Gemini client: {e}")
-
-# --- Initialize Gemini Model ---
-# Updated to the correct and latest model name
-model_name = "gemini-2.5-flash"
+    client = None
 
 def perform_search(query):
     """
@@ -60,11 +59,13 @@ def should_perform_search_ai(message):
         f"User request: '{message}'"
     )
     
+    if not client:
+        print("Gemini client is not initialized. Skipping AI search decision.")
+        return False
+        
     try:
-        # We are using a different model here to handle this small task
-        # Updated to the correct and latest model name
-        decision_model = genai.GenerativeModel("gemini-2.5-pro")
-        response = decision_model.generate_content(
+        response = client.generate_content(
+            model=decision_model_name,
             contents=search_prompt
         )
         decision = response.text.strip().upper()
@@ -86,6 +87,9 @@ def chat():
     print("Received user message...")
     if not user_message:
         return jsonify({"error": "No message provided"}), 400
+
+    if not client:
+        return jsonify({"response": "I'm sorry, I encountered an error during startup and cannot process requests."}), 500
 
     try:
         system_instruction = (
@@ -133,8 +137,8 @@ def chat():
         print(full_prompt)
         print("-" * 50)
 
-        response = client.models.generate_content(
-            model=model_name,
+        response = client.generate_content(
+            model=main_model_name,
             contents=full_prompt
         )
         
