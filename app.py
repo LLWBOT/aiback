@@ -19,7 +19,8 @@ except Exception as e:
     print(f"Error initializing Gemini client: {e}")
 
 # --- Initialize Gemini Model ---
-model_name = "gemini-1.5-flash"
+# Updated to the correct and latest model name
+model_name = "gemini-2.5-flash"
 
 def perform_search(query):
     """
@@ -60,8 +61,10 @@ def should_perform_search_ai(message):
     )
     
     try:
-        response = client.models.generate_content(
-            model=model_name,
+        # We are using a different model here to handle this small task
+        # Updated to the correct and latest model name
+        decision_model = genai.GenerativeModel("gemini-2.5-pro")
+        response = decision_model.generate_content(
             contents=search_prompt
         )
         decision = response.text.strip().upper()
@@ -103,7 +106,9 @@ def chat():
         search_results = ""
         prompt_prefix = ""
         
-        if should_perform_search_ai(user_message):
+        should_search = should_perform_search_ai(user_message)
+        
+        if should_search:
             search_results = perform_search(user_message)
             if search_results:
                 prompt_prefix = "Based on a quick web search, I found..."
