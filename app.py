@@ -1,7 +1,7 @@
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 import os
-import google.generativeai as genai # <-- CORRECT IMPORT
+from google import genai # This is the correct import for the 'google-genai' library
 import traceback
 from bs4 import BeautifulSoup
 import requests
@@ -14,14 +14,13 @@ SITE_URL = "https://llwai.netlify.app"
 CORS(app, origins=SITE_URL)
 
 # --- Initialize Gemini Client ---
-# Using the recommended method for the latest library
 try:
-    genai.configure(api_key=os.environ["GEMINI_API_KEY"])
+    client = genai.Client() # This is the correct way to initialize the client
 except Exception as e:
     print(f"Error initializing Gemini client: {e}")
 
 # --- Initialize Gemini Model ---
-model_name = "gemini-1.5-flash"
+model_name = "gemini-2.5-flash"
 
 def perform_search(query):
     """
@@ -52,7 +51,7 @@ def perform_search(query):
 
 def should_perform_search_ai(message):
     """
-    Uses the AI to decide if a web search is necessary.
+    Uses the AI to decide if a web search is necessary, using the correct client.
     """
     search_prompt = (
         "Is a web search necessary to answer this user request with recent or specific information? "
@@ -61,8 +60,10 @@ def should_perform_search_ai(message):
     )
     
     try:
-        model = genai.GenerativeModel(model_name)
-        response = model.generate_content(contents=search_prompt)
+        response = client.models.generate_content(
+            model=model_name,
+            contents=search_prompt
+        )
         decision = response.text.strip().upper()
         print(f"AI search decision: {decision}")
         return decision == 'YES'
@@ -127,8 +128,8 @@ def chat():
         print(full_prompt)
         print("-" * 50)
 
-        model = genai.GenerativeModel(model_name)
-        response = model.generate_content(
+        response = client.models.generate_content(
+            model=model_name,
             contents=full_prompt
         )
         
