@@ -1,5 +1,0 @@
-Flask
-Flask-CORS
-google-genai
-ddgs
-pillow
